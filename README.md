@@ -16,3 +16,8 @@ This repository contains the great ERNW's [nmap-parse-output](https://github.com
 * [xsltproc](http://xmlsoft.org/XSLT/xsltproc.html)
 * [Selenium](https://www.seleniumhq.org/): `pip install -U selenium`
 * [Chrome Driver](https://chromedriver.storage.googleapis.com/index.html?path=2.42/) which has to be in PATH...
+
+## Installation
+```
+$ git clone https://github.com/bik3te/Paparazzi --recurse-submodules
+```
