@@ -1,0 +1,3 @@
+[submodule "utils/nmap-parse-output"]
+	path = utils/nmap-parse-output
+	url = https://github.com/ernw/nmap-parse-output

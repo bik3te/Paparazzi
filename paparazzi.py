@@ -2,46 +2,35 @@
 Simple HTTP(S) screenshoter using Selenium and Chrome Driver.
 """
 
+import io
 import os
-import argparse
+import time
+import shlex
 from pathlib import Path
-from colorama import Fore
 from selenium import webdriver
-from multiprocessing import Pool
-
-def print_success(message):
-    print('{} [*] {}{}'.format(Fore.GREEN, message, Fore.RESET))
-
-def print_error(message):
-    print('{} [-] {}{}'.format(Fore.RED, message, Fore.RESET))
-
-def print_info(message):
-    print('{} [!] {}{}'.format(Fore.CYAN, message, Fore.RESET))
-
-def print_warning(message):
-    print('{} [!] {}{}'.format(Fore.YELLOW, message, Fore.RESET))
-
-def usage():
-    """Argument parser function."""
-    parser = argparse.ArgumentParser(description="Please don't visit each page manually...")
-    parser.add_argument('input_file', help="List of hosts to screenshot")
-    parser.add_argument('-o', '--output_dir', help="On which directory do you want to save screenshots?", default=None)
-    parser.add_argument('-p', '--proxy', help="Do you want to use proxy? scheme://[user:password@]host:port", default=None)
-    return parser.parse_args()
+from subprocess import run, PIPE
+from multiprocessing.dummy import Pool as ThreadPool
+from utils.funcs import usage, print_info, print_warning, print_error, print_success
 
 class Paparazzi(object):
     """A really disturbing person..."""
-    def __init__(self, input_file, output_dir, proxy):
+    def __init__(self, input_file, output_dir, nb_threads, proxy):
         self.input_file = input_file
         self.output_dir = output_dir
+        self.nb_threads = nb_threads
         self.proxy = proxy
-        with open(self.input_file, 'r') as fd_in:
-            self.hosts_list = [host.strip() for host in fd_in.readlines()]
+        self.hosts_list = [host.strip().decode('utf-8') for host in self.hosts_gen()]
         self.grapeshot()
+
+    def hosts_gen(self):
+        """Parse Nmap XML and look for hosts with HTTP(S) services."""
+        command = './utils/nmap-parse-output/nmap-parse-output {} http-ports'.format(self.input_file)
+        res = run(shlex.split(command), stdout=PIPE)
+        return io.BytesIO(res.stdout).readlines()
 
     def grapeshot(self):
         """Let's go."""
-        if self.output_dir and not Path(self.output_dir).exists():
+        if not Path(self.output_dir).exists():
             print_warning('{} does not exist, creating it...'.format(self.output_dir))
             try:
                 access_rights = 0o755
@@ -49,7 +38,7 @@ class Paparazzi(object):
             except OSError:
                 print_error('Error creating {}!')
 
-        with Pool(os.cpu_count()) as pool:
+        with ThreadPool(self.nb_threads) as pool:
             pool.map(self.screenshot, self.hosts_list)
 
     def screenshot(self, url):
@@ -65,10 +54,7 @@ class Paparazzi(object):
             driver = webdriver.Chrome(desired_capabilities=desired_caps)
 
             driver.get(url)
-            if self.output_dir:
-                output = '{}/{}.png'.format(self.output_dir, url.split('://')[1])
-            else:
-                output = '{}.png'.format(url.split('://')[1])
+            output = '{}/{}.png'.format(self.output_dir, url.split('://')[1])
             driver.save_screenshot(output)
             driver.close()
             print_success('Screenshot of {} OK!'.format(url))
@@ -80,4 +66,6 @@ if __name__ == '__main__':
     print_info("Are you an annoying paparazzi?")
     if args.proxy:
         print_info('Using proxy: {}'.format(args.proxy))
-    Paparazzi(args.input_file, args.output_dir, args.proxy)
+    start_time = time.time()
+    Paparazzi(args.input_file, args.output_dir, args.threads, args.proxy)
+    print_success('Grapeshotted in {} seconds.'.format(time.time() - start_time))
