@@ -15,6 +15,7 @@ This repository contains the great ERNW's [nmap-parse-output](https://github.com
 * Python 3
 * [xsltproc](http://xmlsoft.org/XSLT/xsltproc.html)
 * [Selenium](https://www.seleniumhq.org/): `pip install -U selenium`
+* [colorama](https://pypi.org/project/colorama/): `pip install -U colorama`
 * [Chrome Driver](https://chromedriver.storage.googleapis.com/index.html?path=2.42/) which has to be in PATH...
 
 ## Installation
