@@ -67,5 +67,5 @@ if __name__ == '__main__':
     if args.proxy:
         print_info('Using proxy: {}'.format(args.proxy))
     start_time = time.time()
-    Paparazzi(args.input_file, args.output_dir, args.threads, args.proxy)
+    Paparazzi(args.nmap_xml, args.output_dir, args.threads, args.proxy)
     print_success('Grapeshotted in {} seconds.'.format(time.time() - start_time))
