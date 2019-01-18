@@ -5,11 +5,18 @@ Simple HTTP(S) screenshoter using Selenium and Chrome Driver.
 import io
 import time
 import shlex
-from selenium import webdriver
 from subprocess import run, PIPE
 from shutil import copytree, Error
 from multiprocessing.dummy import Pool as ThreadPool
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 from utils.funcs import usage, print_info, print_error, print_success
+
 
 class Paparazzi(object):
     """A really disturbing person..."""
@@ -41,25 +48,28 @@ class Paparazzi(object):
 
     def screenshot(self, url):
         """Nice shot!"""
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        if self.proxy:
+            options.add_argument('--proxy-server={}'.format(self.proxy))
+        desired_caps = options.to_capabilities()
+        desired_caps['acceptInsecureCerts'] = True
+
+        driver = webdriver.Chrome(desired_capabilities=desired_caps)
+
+        driver.get(url)
         try:
-            options = webdriver.ChromeOptions()
-            options.add_argument('--headless')
-            if self.proxy:
-                options.add_argument('--proxy-server={}'.format(self.proxy))
-            desired_caps = options.to_capabilities()
-            desired_caps['acceptInsecureCerts'] = True
-
-            driver = webdriver.Chrome(desired_capabilities=desired_caps)
-
-            driver.get(url)
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.TAG_NAME, 'title'))
+            )
             title = driver.title
             output = '{}/images/{}.png'.format(self.output_dir, url.split('://')[1])
             driver.save_screenshot(output)
             driver.close()
             print_success('Screenshot of {} OK!'.format(url))
             self.screenshots.append({'url': url, 'path': output.replace('{}/'.format(self.output_dir), ''), 'title': title})
-        except:
-            print_error('Screenshot of {} KO...'.format(url))
+        except TimeoutException:
+            print_error('Screenshot of {} KO! Host may be down...'.format(url))
 
     def create_gallery(self):
         """Preparing the screenshot gallery!"""
