@@ -8,12 +8,11 @@ import time
 import shlex
 import socket
 from subprocess import run, PIPE
-from shutil import copytree, Error
+from shutil import copytree
 from multiprocessing.dummy import Pool as ThreadPool
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -29,7 +28,6 @@ class Paparazzi(object):
         self.proxy = proxy
         self.hosts_list = []
         self.screenshots = []
-        self.cpt = 0
         self.grapeshot()
         self.create_gallery()
 
