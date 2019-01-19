@@ -3,8 +3,10 @@ Simple HTTP(S) screenshoter using Selenium and Chrome Driver.
 """
 
 import io
+import sys
 import time
 import shlex
+import socket
 from subprocess import run, PIPE
 from shutil import copytree, Error
 from multiprocessing.dummy import Pool as ThreadPool
@@ -15,7 +17,7 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from utils.funcs import usage, print_info, print_error, print_success
+from utils.funcs import usage, print_info, print_error, print_warning, print_success
 
 
 class Paparazzi(object):
@@ -25,8 +27,9 @@ class Paparazzi(object):
         self.output_dir = output_dir
         self.nb_threads = nb_threads
         self.proxy = proxy
-        self.hosts_list = [host.strip().decode('utf-8') for host in self.hosts_gen()]
+        self.hosts_list = []
         self.screenshots = []
+        self.cpt = 0
         self.grapeshot()
         self.create_gallery()
 
@@ -40,14 +43,26 @@ class Paparazzi(object):
         """Let's go."""
         try:
             copytree('data', self.output_dir)
-        except Error as err:
-            print_error('Error creating {}, directory exist!'.format(err))
+        except:
+            print_error('Error creating {}, directory exist!'.format(self.output_dir))
+            sys.exit(1)
+        self.hosts_list = [host.strip().decode('utf-8') for host in self.hosts_gen()]
+        print_info('{} hosts to screenshot!'.format(len(self.hosts_list)))
 
         with ThreadPool(self.nb_threads) as pool:
             pool.map(self.screenshot, self.hosts_list)
 
     def screenshot(self, url):
         """Nice shot!"""
+        # Host is up and not filtered?
+        socket.setdefaulttimeout(3)
+        host, port = (url.split('://')[1].split(':')[0], url.split('://')[1].split(':')[1])
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.connect((host, int(port)))
+            except:
+                print_error('Screenshot of {} KO! Host is down or communication is filtered...'.format(url))
+
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         if self.proxy:
@@ -57,8 +72,9 @@ class Paparazzi(object):
 
         driver = webdriver.Chrome(desired_capabilities=desired_caps)
 
-        driver.get(url)
+        # Content is not bullshit?
         try:
+            driver.get(url)
             WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.TAG_NAME, 'title'))
             )
@@ -68,8 +84,12 @@ class Paparazzi(object):
             driver.close()
             print_success('Screenshot of {} OK!'.format(url))
             self.screenshots.append({'url': url, 'path': output.replace('{}/'.format(self.output_dir), ''), 'title': title})
-        except TimeoutException:
-            print_error('Screenshot of {} KO! Host may be down...'.format(url))
+        except:
+            print_warning('Did not took screenshot of {}! Bullshit or empty page...'.format(url))
+
+    def sort_screenshots(self):
+        """Sort screenshots by title."""
+        self.screenshots = sorted(self.screenshots, key=lambda k: k['title'])
 
     def create_gallery(self):
         """Preparing the screenshot gallery!"""
@@ -77,6 +97,7 @@ class Paparazzi(object):
             template = fd_in.read()
 
         data = ''
+        self.sort_screenshots()
         for screenshot in self.screenshots:
             data += """<div class="col-sm-6 col-md-4">
                           <div class="thumbnail">
