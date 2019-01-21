@@ -5,6 +5,7 @@ Simple HTTP(S) screenshoter using Selenium and Chrome Driver.
 import io
 import sys
 import time
+import json
 import shlex
 import socket
 from subprocess import run, PIPE
@@ -43,6 +44,7 @@ class Paparazzi(object):
         self.screenshots = []
         self.grapeshot()
         self.create_gallery()
+        self.save_discovery()
 
     def hosts_gen(self):
         """Parse Nmap XML and look for hosts with HTTP(S) services."""
@@ -155,6 +157,12 @@ class Paparazzi(object):
 
         with open('{}/index.html'.format(self.output_dir), 'w') as fd_out:
             fd_out.write(template.replace('[w00t]', data))
+
+    def save_discovery(self):
+        """Logging sensitive interfaces."""
+        print_info('Storing sensitive interfaces into {}/interfaces.json...'.format(self.output_dir))
+        with open('{}/interfaces.json'.format(self.output_dir), 'w') as fd_out:
+            fd_out.write(json.dumps(self.found_interfaces))
 
 if __name__ == '__main__':
     args = usage()
