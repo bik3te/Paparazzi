@@ -26,6 +26,19 @@ class Paparazzi(object):
         self.output_dir = output_dir
         self.nb_threads = nb_threads
         self.proxy = proxy
+        self.interface_types = {
+            'Tomcat': 'Apache Tomcat',
+            'Jenkins': 'Jenkins',
+            'Hudson': 'Hudson',
+            'Jira': 'Atlassian Jira'
+        }
+        self.found_interfaces = {
+            'Tomcat': [],
+            'Jenkins': [],
+            'Hudson': [],
+            'Jira': [],
+            'Undefined': []
+        }
         self.hosts_list = []
         self.screenshots = []
         self.grapeshot()
@@ -37,6 +50,12 @@ class Paparazzi(object):
         res = run(shlex.split(command), stdout=PIPE)
         return io.BytesIO(res.stdout).readlines()
 
+    def hosts_file(self, hosts_input):
+        """Take a host file as input."""
+        with open(hosts_input, 'r') as fd_in:
+            hosts = fd_in.readlines()
+        return [host.strip() for host in hosts]
+
     def grapeshot(self):
         """Let's go."""
         try:
@@ -44,7 +63,13 @@ class Paparazzi(object):
         except:
             print_error('Error creating {}, directory exist!'.format(self.output_dir))
             sys.exit(1)
-        self.hosts_list = [host.strip().decode('utf-8') for host in self.hosts_gen()]
+        with open(self.input_file, 'r') as fd_in:
+            data = fd_in.readline()
+
+        if data == '<?xml version="1.0" encoding="UTF-8"?>\n':
+            self.hosts_list = [host.strip().decode('utf-8') for host in self.hosts_gen()]
+        else:
+            self.hosts_list = self.hosts_file(self.input_file)
         print_info('{} hosts to screenshot!'.format(len(self.hosts_list)))
 
         with ThreadPool(self.nb_threads) as pool:
@@ -53,6 +78,7 @@ class Paparazzi(object):
     def screenshot(self, url):
         """Nice shot!"""
         # Host is up and not filtered?
+        timeout = False
         socket.setdefaulttimeout(3)
         host, port = (url.split('://')[1].split(':')[0], url.split('://')[1].split(':')[1])
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -60,30 +86,43 @@ class Paparazzi(object):
                 s.connect((host, int(port)))
             except:
                 print_error('Screenshot of {} KO! Host is down or communication is filtered...'.format(url))
+                timeout = True
 
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        if self.proxy:
-            options.add_argument('--proxy-server={}'.format(self.proxy))
-        desired_caps = options.to_capabilities()
-        desired_caps['acceptInsecureCerts'] = True
+        if not timeout:
+            options = webdriver.ChromeOptions()
+            options.add_argument('--headless')
+            if self.proxy:
+                options.add_argument('--proxy-server={}'.format(self.proxy))
+            desired_caps = options.to_capabilities()
+            desired_caps['acceptInsecureCerts'] = True
 
-        driver = webdriver.Chrome(desired_capabilities=desired_caps)
+            driver = webdriver.Chrome(desired_capabilities=desired_caps)
 
-        # Content is not bullshit?
-        try:
-            driver.get(url)
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'title'))
-            )
-            title = driver.title
-            output = '{}/images/{}.png'.format(self.output_dir, url.split('://')[1])
-            driver.save_screenshot(output)
-            driver.close()
-            print_success('Screenshot of {} OK!'.format(url))
-            self.screenshots.append({'url': url, 'path': output.replace('{}/'.format(self.output_dir), ''), 'title': title})
-        except:
-            print_warning('Did not took screenshot of {}! Bullshit or empty page...'.format(url))
+            # Content is not bullshit?
+            try:
+                interface_found = False
+                driver.get(url)
+                WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.TAG_NAME, 'title'))
+                )
+                title = driver.title
+                output = '{}/images/{}.png'.format(self.output_dir, url.split('://')[1])
+                driver.save_screenshot(output)
+
+                for interface in self.interface_types:
+                    if self.interface_types[interface].lower() in driver.page_source.lower():
+                        self.found_interfaces[interface] += [url]
+                        interface_found = True
+                        print_success('Screenshot of {} OK! -> {} interface'.format(url, interface))
+
+                if not interface_found:
+                    self.found_interfaces['Undefined'] += [url]
+                    print_success('Screenshot of {} OK!'.format(url))
+
+                self.screenshots.append({'url': url, 'path': output.replace('{}/'.format(self.output_dir), ''), 'title': title})
+                driver.close()
+            except:
+                print_warning('Did not took screenshot of {}! Bullshit or empty page...'.format(url))
 
     def sort_screenshots(self):
         """Sort screenshots by title."""
@@ -123,5 +162,5 @@ if __name__ == '__main__':
     if args.proxy:
         print_info('Using proxy: {}'.format(args.proxy))
     start_time = time.time()
-    Paparazzi(args.nmap_xml, args.output_dir, args.threads, args.proxy)
+    Paparazzi(args.input_file, args.output_dir, args.threads, args.proxy)
     print_success('Grapeshotted in {} seconds.'.format(time.time() - start_time))

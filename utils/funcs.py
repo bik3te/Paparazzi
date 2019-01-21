@@ -20,7 +20,7 @@ def print_warning(message):
 def usage():
     """Argument parser function."""
     parser = argparse.ArgumentParser(description="Please don't visit each page manually...")
-    parser.add_argument('nmap_xml', help="Nmap XML output file")
+    parser.add_argument('input_file', help="Nmap XML output file or hosts list (http[s]://<host>:<port>)")
     parser.add_argument('-o', '--output_dir', help="On which directory do you want your screenshot gallery? (default=./gallery)", default='./gallery')
     parser.add_argument('-p', '--proxy', help="Do you want to use proxy? scheme://[user:password@]host:port", default=None)
     parser.add_argument('-t', '--threads', help="How many threads to use? (default=8)", type=int, default=8)
