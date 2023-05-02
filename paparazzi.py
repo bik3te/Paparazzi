@@ -98,7 +98,7 @@ class Paparazzi(object):
             desired_caps = options.to_capabilities()
             desired_caps['acceptInsecureCerts'] = True
 
-            driver = webdriver.Chrome(desired_capabilities=desired_caps)
+            driver = webdriver.Chrome(options=options, desired_capabilities=desired_caps)
 
             # Content is not bullshit?
             try:
