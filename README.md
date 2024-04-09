@@ -7,7 +7,7 @@ I enjoyed a lot [webscreenshot](https://github.com/maaaaz/webscreenshot) but was
 of empty screenshots produced when screenshoting HTTPS websites with a self-signed certificate.
 As [maaaaz](https://github.com/maaaaz) explained, the reason is that the [`--ignore-certificate-errors`](https://groups.google.com/a/chromium.org/forum/#!topic/headless-dev/eiudRsYdc3A) option doesn't work and will never work anymore: the solution is to use a [proper webdriver](https://bugs.chromium.org/p/chromium/issues/detail?id=697721).
 
-It supports proxy - http or socks. It is multi-threaded and double-check if the service is down or the communication is filtered and doesn't take screenshots of empty pages or pages with useless text content.
+It supports proxy - http or socks (e.g. `-p socks5://127.0.0.1:5000`). It is multi-threaded and double-check if the service is down or the communication is filtered and doesn't take screenshots of empty pages or pages with useless text content.
 
 A host to screenshot list - protocol://ip_or_hostname:port - or an XML nmap output has to be given as input to Paparazzi.
 
